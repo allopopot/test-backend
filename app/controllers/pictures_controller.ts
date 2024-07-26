@@ -53,7 +53,7 @@ export default class PicturesController {
             })
 
             const randomFileName = `${randomUUID().toString()}.${file?.extname}`
-            file?.move(app.makePath('uploads/pictures'), {
+            file?.move(app.makePath('public/pictures'), {
                 name: randomFileName
             })
 
@@ -108,12 +108,12 @@ export default class PicturesController {
             if (body?.description) { picture.description = body.description }
             if (file !== null) {
 
-                unlink(app.makePath(`uploads/pictures/${picture.filename}`), (error) => {
+                unlink(app.makePath(`public/pictures/${picture.filename}`), (error) => {
                     if (error) { console.log(error) }
                 })
                 const randomFileName = `${randomUUID().toString()}.${file?.extname}`
                 picture.filename = randomFileName
-                file?.move(app.makePath('uploads/pictures'), {
+                file?.move(app.makePath('public/pictures'), {
                     name: randomFileName
                 })
             }
