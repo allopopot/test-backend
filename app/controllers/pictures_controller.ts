@@ -3,14 +3,17 @@ import app from '@adonisjs/core/services/app'
 import { randomUUID } from 'crypto';
 import Picture from '#models/picture'
 import { unlink } from 'fs';
-
+import PicturePolicy from '#policies/picture_policy';
 
 export default class PicturesController {
-    async get({ response, params, auth }: HttpContext) {
+    async get({ response, params, auth, bouncer }: HttpContext) {
         try {
             const user = auth.getUserOrFail()
             if (!params.id) { throw new Error("ID not provided") }
-            const picture = await Picture.query().select("*").where("id", params.id).andWhere("user_id", user.id).andWhere("is_deleted", false).firstOrFail()
+            const picture = await Picture.query().select("*").where("id", params.id).andWhere("is_deleted", false).firstOrFail()
+            if (await bouncer.with(PicturePolicy).denies("get", picture)) {
+                return response.forbidden("Cannot Access resource.")
+            }
             picture.filename =  `http://${process.env.HOST}:${process.env.PORT}/pictures/${picture.filename}`
             response.status(200).json(picture)
         } catch (error) {
@@ -28,7 +31,8 @@ export default class PicturesController {
         try {
             const lastIdCursor: any = request.qs()?.lastIdCursor
             const user = auth.getUserOrFail()
-            const picturesQuery = Picture.query().select("id", "user_id", "name", "filename").where("user_id", user.id).andWhere("is_deleted", false).orderBy("id", 'desc').limit(10)
+            const picturesQuery = Picture.query().select("id", "user_id", "name", "filename").andWhere("is_deleted", false).orderBy("id", 'desc').limit(10)
+            if (!user.isAdmin) { picturesQuery.where("user_id", user.id) }
             !lastIdCursor ? null : picturesQuery.andWhere("id", "<", parseInt(lastIdCursor))
             var pictures = await picturesQuery.exec()
             pictures = pictures.map(el=>{
@@ -80,12 +84,15 @@ export default class PicturesController {
         }
     }
 
-    async delete({ response, params, auth }: HttpContext) {
+    async delete({ response, params, auth, bouncer }: HttpContext) {
         try {
-            const user = auth.getUserOrFail()
+            auth.getUserOrFail()
             if (!params.id) { throw new Error("ID not provided") }
-            const picture = await Picture.query().where("id", params.id).andWhere("user_id", user.id).andWhere("is_deleted", false).first()
-            if (!picture) { throw new Error("Picture does not exist") }
+            const picture = await Picture.query().where("id", params.id).andWhere("is_deleted", false).firstOrFail()
+            if (await bouncer.with(PicturePolicy).denies("delete", picture)) {
+                return response.forbidden("Cannot Access resource.")
+            }
+            if (!picture) {  new Error("Picture does not exist") }
             picture.is_deleted = true
             await picture.save()
             response.status(200).json(picture)
@@ -100,7 +107,7 @@ export default class PicturesController {
         }
     }
 
-    async edit({ request, response, auth, params }: HttpContext) {
+    async edit({ request, response, auth, params, bouncer }: HttpContext) {
         try {
             const user = auth.getUserOrFail()
             const body = request.body()
@@ -108,7 +115,9 @@ export default class PicturesController {
 
             if (!params.id) { throw new Error("ID not provided") }
             const picture = await Picture.query().where("id", params.id).andWhere("user_id", user.id).andWhere("is_deleted", false).firstOrFail()
-
+            if (await bouncer.with(PicturePolicy).denies("edit", picture)) {
+                return response.forbidden("Cannot Access resource.")
+            }
             if (body?.name) { picture.name = body.name }
             if (body?.description) { picture.description = body.description }
             if (file !== null) {
