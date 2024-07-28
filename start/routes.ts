@@ -17,6 +17,7 @@ router.group(() => {
   router.group(() => {
     router.post("/login", [AuthController, 'login'])
     router.post("/register", [AuthController, 'createAccount'])
+    router.post("/verifyToken", [AuthController, 'verifyToken'])
   }).prefix("/auth")
 
 
@@ -25,7 +26,7 @@ router.group(() => {
     router.post("", [PicturesController, 'add'])
     router.get("/:id", [PicturesController, 'get'])
     router.delete("/:id", [PicturesController, 'delete'])
-    router.patch("/:id", [PicturesController, 'edit'])
+    router.put("/:id", [PicturesController, 'edit'])
   }).prefix("/pictures").use(middleware.gate())
 
 }).prefix("/api")

@@ -11,6 +11,7 @@ export default class PicturesController {
             const user = auth.getUserOrFail()
             if (!params.id) { throw new Error("ID not provided") }
             const picture = await Picture.query().select("*").where("id", params.id).andWhere("user_id", user.id).andWhere("is_deleted", false).firstOrFail()
+            picture.filename =  `http://${process.env.HOST}:${process.env.PORT}/pictures/${picture.filename}`
             response.status(200).json(picture)
         } catch (error) {
             response.status(400).json({
@@ -29,7 +30,11 @@ export default class PicturesController {
             const user = auth.getUserOrFail()
             const picturesQuery = Picture.query().select("id", "user_id", "name", "filename").where("user_id", user.id).andWhere("is_deleted", false).orderBy("id", 'desc').limit(10)
             !lastIdCursor ? null : picturesQuery.andWhere("id", "<", parseInt(lastIdCursor))
-            const pictures = await picturesQuery.exec()
+            var pictures = await picturesQuery.exec()
+            pictures = pictures.map(el=>{
+                el.filename = `http://${process.env.HOST}:${process.env.PORT}/pictures/${el.filename}`
+                return el
+            })
             response.status(200).json(pictures)
         } catch (error) {
             response.status(400).json({
